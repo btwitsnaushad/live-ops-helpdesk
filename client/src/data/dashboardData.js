@@ -1,4 +1,5 @@
-// Dashboard summary cards
+
+ // Dashboard summary cards
 export const dashboardStats = [
   {
     id: 1,
@@ -21,9 +22,9 @@ export const dashboardStats = [
   {
     id: 3,
     title: 'Active Agents',
-    value: 12,
+    value: 6,
     change: null,
-    description: '10 agents available',
+    description: '3 agents available',
     icon: 'Users',
     color: 'cyan',
   },
@@ -71,10 +72,10 @@ export const ticketVolumeData = {
 
 // Agent availability summary
 export const agentAvailability = {
-  total: 16,
-  available: 10,
-  onTicket: 2,
-  offline: 4,
+  total: 6,
+  available: 3,
+  onTicket: 1,
+  offline: 2,
 };
 
 // Dashboard time filters
