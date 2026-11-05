@@ -1,3 +1,4 @@
+import './TicketVolumeChart.css';
 function TicketVolumeChart({
   data = [],
   filters = [],
@@ -61,7 +62,7 @@ function TicketVolumeChart({
           viewBox={`0 0 ${chartWidth} ${chartHeight + 25}`}
           role="img"
           aria-label="Ticket volume trend chart"
-          preserveAspectRatio="none"
+          preserveAspectRatio="xMidYMid meet"
         >
           {[0, 1, 2, 3].map((line) => {
             const y = 20 + line * 50;

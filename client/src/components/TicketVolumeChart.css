@@ -1,0 +1,147 @@
+
+/* Ticket Volume Chart */
+
+.ticket-volume-chart {
+  width: 100%;
+  min-width: 0;
+  padding: 24px;
+  background: #111d2e;
+  border: 1px solid #26364d;
+  border-radius: 14px;
+  box-sizing: border-box;
+}
+
+/* Chart Header */
+
+.ticket-chart-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.ticket-chart-header h3 {
+  margin: 0;
+  color: #f1f5f9;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.ticket-chart-header p {
+  margin: 8px 0 0;
+  color: #94a3b8;
+  font-size: 13px;
+}
+
+/* Time Filters */
+
+.ticket-chart-filters {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.ticket-chart-filters button {
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  border-radius: 7px;
+  background: transparent;
+  color: #94a3b8;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.2s ease, color 0.2s ease;
+}
+
+.ticket-chart-filters button:hover {
+  background: #1e293b;
+  color: #e2e8f0;
+}
+
+.ticket-chart-filters button.active {
+  background: #1d3554;
+  border-color: #29496e;
+  color: #60a5fa;
+}
+
+/* Chart Content */
+
+.ticket-chart-content {
+  width: 100%;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.ticket-chart-content svg {
+  display: block;
+  width: 100%;
+  height: 180px;
+  overflow: visible;
+}
+
+/* Chart Labels */
+
+.ticket-chart-labels {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 4px;
+  width: 100%;
+  margin-top: 14px;
+  padding: 0 4%;
+  box-sizing: border-box;
+}
+
+.ticket-chart-labels span {
+  flex: 1;
+  min-width: 0;
+  color: #94a3b8;
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Responsive Layout */
+
+@media (max-width: 768px) {
+  .ticket-volume-chart {
+    padding: 18px;
+  }
+
+  .ticket-chart-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .ticket-chart-filters {
+    width: 100%;
+  }
+
+  .ticket-chart-content svg {
+    height: 160px;
+  }
+
+  .ticket-chart-labels span {
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 480px) {
+  .ticket-volume-chart {
+    padding: 14px;
+  }
+
+  .ticket-chart-labels {
+    padding: 0;
+    gap: 2px;
+  }
+
+  .ticket-chart-labels span {
+    font-size: 9px;
+  }
+
+  .ticket-chart-filters button {
+    padding: 7px 9px;
+  }
+}
