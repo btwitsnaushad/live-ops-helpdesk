@@ -1,3 +1,4 @@
+import { sampleTickets } from '../data/sampleTickets';
 import './Sidebar.css';
 import {
   LayoutDashboard,
@@ -12,7 +13,7 @@ import {
 
 const navigationItems = [
   { label: 'Overview', icon: LayoutDashboard },
-  { label: 'Tickets', icon: Ticket, count: 12 },
+  { label: 'Tickets', icon: Ticket, count: sampleTickets.length },
   { label: 'Agents', icon: Users },
   { label: 'Activity Logs', icon: Activity },
 ];
