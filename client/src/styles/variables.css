@@ -1,0 +1,31 @@
+
+:root {
+  --bg: #080e1b;
+  --surface: #0d1728;
+  --surface-hover: #111c2e;
+  --surface-card: #111c2e;
+
+  --border: #263750;
+  --border-hover: #334b68;
+
+  --text: #f1f5f9;
+  --text-secondary: #cbd5e1;
+  --muted: #94a3b8;
+
+  --blue: #3b82f6;
+  --blue-light: #60a5fa;
+  --blue-dark: #1d4ed8;
+
+  --green: #4ade80;
+  --yellow: #fbbf24;
+  --red: #f87171;
+
+  --sidebar-width: 250px;
+  --topbar-height: 68px;
+
+  --radius-sm: 8px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+
+  --transition: 0.2s ease;
+}

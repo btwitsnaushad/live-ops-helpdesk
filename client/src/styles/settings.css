@@ -1,0 +1,116 @@
+/* ========================================
+   SETTINGS PAGE
+======================================== */
+
+.page-container {
+  width: 100%;
+  min-width: 0;
+}
+
+/* Page Heading */
+
+.page-header {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 25px;
+}
+
+.page-header h1 {
+  margin: 0;
+  color: var(--text);
+  font-size: 28px;
+  font-weight: 700;
+}
+
+.page-header p {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Settings Cards */
+
+.page-container > .dashboard-card {
+  width: 100%;
+  margin-bottom: 18px;
+  padding: 24px;
+
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+
+  transition:
+    background 0.2s ease,
+    border-color 0.2s ease;
+}
+
+.page-container > .dashboard-card:last-child {
+  margin-bottom: 0;
+}
+
+.page-container > .dashboard-card h3 {
+  margin: 0 0 10px;
+
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.page-container > .dashboard-card p {
+  margin: 0;
+
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+/* Card Hover */
+
+.page-container > .dashboard-card:hover {
+  border-color: var(--border);
+  background: var(--surface);
+}
+
+/* ========================================
+   RESPONSIVE SETTINGS
+======================================== */
+
+@media (max-width: 768px) {
+  .page-header {
+    margin-bottom: 20px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+  }
+
+  .page-header p {
+    font-size: 13px;
+  }
+
+  .page-container > .dashboard-card {
+    padding: 20px;
+    margin-bottom: 16px;
+  }
+
+  .page-container > .dashboard-card h3 {
+    font-size: 16px;
+  }
+
+  .page-container > .dashboard-card p {
+    font-size: 13px;
+  }
+}
+
+@media (max-width: 480px) {
+  .page-header h1 {
+    font-size: 22px;
+  }
+
+  .page-container > .dashboard-card {
+    padding: 16px;
+    border-radius: 10px;
+  }
+}

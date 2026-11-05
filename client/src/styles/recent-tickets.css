@@ -1,0 +1,83 @@
+.recent-tickets {
+  margin-top: 24px;
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+}
+
+.recent-tickets-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.recent-tickets-header h3 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.recent-tickets-header p {
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.recent-tickets-table-wrapper {
+  width: 100%;
+  overflow-x: auto;
+}
+
+.recent-tickets-table {
+  width: 100%;
+  min-width: 700px;
+  border-collapse: collapse;
+  text-align: left;
+}
+
+.recent-tickets-table th {
+  padding: 14px 12px;
+  background: var(--surface-hover);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.recent-tickets-table td {
+  padding: 16px 12px;
+  border-bottom: 1px solid var(--border);
+  color: var(--text-secondary);
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.recent-tickets-table tbody tr:hover {
+  background: var(--surface-hover);
+}
+
+.recent-tickets-table a {
+  color: var(--blue-light);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.recent-tickets-table a:hover {
+  color: var(--blue);
+}
+
+@media (max-width: 768px) {
+  .recent-tickets {
+    padding: 16px;
+  }
+
+  .recent-tickets-header {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+}

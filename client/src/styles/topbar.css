@@ -1,0 +1,104 @@
+
+.main-content {
+  min-width: 0;
+  max-width: 1800px;
+  margin-left: 252px;
+  padding: 28px 34px 18px;
+}
+
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 20px;
+  min-height: 40px;
+  margin-bottom: 37px;
+}
+
+.breadcrumbs,
+.topbar-actions {
+  display: flex;
+  align-items: center;
+}
+
+.breadcrumbs {
+  gap: 12px;
+  color: #8fa0b9;
+  font-size: 12px;
+}
+
+.breadcrumbs strong {
+  color: #e7edf8;
+  font-weight: 600;
+}
+
+.breadcrumb-separator {
+  color: #465773;
+}
+
+.topbar-actions {
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.system-status,
+.date-button,
+.notification-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 9px;
+}
+
+.system-status {
+  padding: 0 13px;
+  color: #65e6b5;
+  background: #0b2a27;
+  border-color: #155148;
+  font-size: 11px;
+}
+
+.status-dot {
+  width: 7px;
+  height: 7px;
+  flex-shrink: 0;
+  background: #37e7a0;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #37e7a045;
+}
+
+.date-button,
+.notification-button {
+  color: #c4d0e1;
+  background: #101b2c;
+  cursor: pointer;
+}
+
+.date-button {
+  padding: 0 12px;
+  font-size: 11px;
+}
+
+.notification-button {
+  position: relative;
+  width: 39px;
+}
+
+.notification-button > span {
+  position: absolute;
+  top: 8px;
+  right: 9px;
+  width: 6px;
+  height: 6px;
+  background: var(--blue);
+  border: 1px solid #101b2c;
+  border-radius: 50%;
+}
+
+.mobile-menu {
+  display: none;
+}
