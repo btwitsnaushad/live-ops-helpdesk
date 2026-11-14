@@ -1,8 +1,10 @@
+
 import {
   Ticket,
   Clock,
   Users,
   Zap,
+  Activity,
 } from 'lucide-react';
 
 import StatCard from '../components/StatCard';
@@ -31,18 +33,31 @@ function Overview() {
   } = useDashboard();
 
   return (
-    <div className="overview-page">
+    <section className="overview-page">
 
       {/* Dashboard heading */}
-      <div className="overview-heading">
-        <div>
-          <h1>Dashboard Overview</h1>
-          <p>Monitor your support operations at a glance.</p>
+      <header className="overview-header">
+        <div className="overview-heading">
+          <div className="overview-heading-icon">
+            <Activity size={20} />
+          </div>
+
+          <div>
+            <span className="overview-eyebrow">
+              LIVE OPERATIONS
+            </span>
+
+            <h1>Operations Overview</h1>
+
+            <p>
+              Monitor support activity and agent performance in real time.
+            </p>
+          </div>
         </div>
-      </div>
+      </header>
 
       {/* Summary cards */}
-      <div className="stats-grid">
+      <div className="overview-stats-grid">
         {dashboardStats.map((stat) => (
           <StatCard
             key={stat.id}
@@ -51,7 +66,7 @@ function Overview() {
             icon={iconMap[stat.icon]}
             color={stat.color}
             trend={
-              stat.change
+              stat.change !== undefined && stat.change !== null
                 ? Number.parseFloat(stat.change)
                 : undefined
             }
@@ -60,24 +75,30 @@ function Overview() {
         ))}
       </div>
 
-      {/* Charts and agent availability */}
-      <div className="overview-analytics">
-        <TicketVolumeChart
-          data={chartData}
-          filters={dashboardFilters}
-          selectedFilter={selectedFilter}
-          onFilterChange={setSelectedFilter}
-        />
+      {/* Analytics section */}
+      <div className="overview-analytics-grid">
 
-        <AgentAvailability agents={agentSummary} />
+        <div className="overview-chart-section">
+          <TicketVolumeChart
+            data={chartData}
+            filters={dashboardFilters}
+            selectedFilter={selectedFilter}
+            onFilterChange={setSelectedFilter}
+          />
+        </div>
+
+        <div className="overview-agent-section">
+          <AgentAvailability agents={agentSummary} />
+        </div>
+
       </div>
 
       {/* Recent tickets */}
-      <div className="overview-tickets">
+      <section className="overview-recent-section">
         <RecentTickets tickets={recentTickets} />
-      </div>
+      </section>
 
-    </div>
+    </section>
   );
 }
 
