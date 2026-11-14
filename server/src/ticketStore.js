@@ -1,3 +1,4 @@
+
 // Initial dispatch tickets
 let tickets = [
   {
@@ -26,27 +27,46 @@ let tickets = [
 // In-memory lock store: ticketId -> { socketId, agentName, lockedAt }
 const activeLocks = new Map();
 
+// Return all available tickets
 const getTickets = () => tickets;
 
+// Create a new ticket with a unique ID
 const addTicket = (truckId, issue) => {
+  let ticketId;
+
+  do {
+    ticketId = `TKT-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+  } while (tickets.some((ticket) => ticket.id === ticketId));
+
   const newTicket = {
-    id: `TKT-${Math.floor(100 + Math.random() * 900)}`,
+    id: ticketId,
     truckId: truckId.trim().toUpperCase(),
     issue: issue.trim(),
     status: 'Open',
     resolution: ''
   };
+
   tickets.unshift(newTicket);
+
   return newTicket;
 };
 
+// Update ticket resolution and status
 const updateTicketResolution = (ticketId, resolution, status = 'Resolved') => {
-  tickets = tickets.map((t) =>
-    t.id === ticketId ? { ...t, resolution: resolution.trim(), status } : t
+  tickets = tickets.map((ticket) =>
+    ticket.id === ticketId
+      ? {
+          ...ticket,
+          resolution: resolution.trim(),
+          status
+        }
+      : ticket
   );
+
   return tickets;
 };
 
+// Convert active locks Map into a plain object
 const serializeLocks = () => Object.fromEntries(activeLocks);
 
 module.exports = {
