@@ -1,36 +1,135 @@
-import { useState } from 'react';
+
+import { useEffect, useState } from 'react';
 import {
   Search,
   Plus,
-  Filter,
   Ticket,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  MoreHorizontal,
+  Lock,
+  Unlock,
+  Save,
   X,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
-import { sampleTickets } from '../data/sampleTickets';
+import socket from '../services/socket';
 
 function Tickets() {
-  const [allTickets, setAllTickets] = useState(sampleTickets);
+  const [tickets, setTickets] = useState([]);
+  const [locks, setLocks] = useState({});
   const [search, setSearch] = useState('');
   const [status, setStatus] = useState('All');
+  const [connected, setConnected] = useState(socket.connected);
+  const [notice, setNotice] = useState('');
   const [showForm, setShowForm] = useState(false);
+  const [truckId, setTruckId] = useState('');
+  const [issue, setIssue] = useState('');
+  const [editingTicket, setEditingTicket] = useState(null);
+  const [pendingLockTicket, setPendingLockTicket] = useState(null);
+  const [resolution, setResolution] = useState('');
 
-  const [formData, setFormData] = useState({
-    customer: '',
-    subject: '',
-    priority: 'Medium',
-    agent: 'Unassigned',
-  });
+  const agentName = 'Support Agent';
 
-  const tickets = allTickets.filter((ticket) => {
+  // Set up socket listeners and load dashboard data.
+  useEffect(() => {
+    const handleConnect = () => {
+      setConnected(true);
+      setNotice('');
+      socket.emit('join_dashboard');
+    };
+
+    const handleDisconnect = () => {
+      setConnected(false);
+      setPendingLockTicket(null);
+      setEditingTicket(null);
+      setResolution('');
+      setNotice('Connection Lost: Reconnecting...');
+    };
+
+    const handleDashboardState = (data = {}) => {
+      setTickets(data.tickets || []);
+      setLocks(data.locks || {});
+    };
+
+    const handleTicketCreated = (ticket) => {
+      setTickets((previous) => [
+        ticket,
+        ...previous.filter((item) => item.id !== ticket.id),
+      ]);
+    };
+
+    const handleTicketsUpdated = (updatedTickets) => {
+      setTickets(updatedTickets || []);
+    };
+
+    const handleLocksUpdated = (updatedLocks) => {
+      const currentLocks = updatedLocks || {};
+      setLocks(currentLocks);
+
+      // Open the editor only after the server confirms our lock.
+      if (pendingLockTicket) {
+        const confirmedLock = currentLocks[pendingLockTicket];
+
+        if (confirmedLock?.socketId === socket.id) {
+          setEditingTicket(pendingLockTicket);
+          setResolution('');
+          setPendingLockTicket(null);
+        }
+      }
+    };
+
+    const handleLockRejected = ({ lockedBy, message } = {}) => {
+      setPendingLockTicket(null);
+      setEditingTicket(null);
+      setResolution('');
+
+      setNotice(
+        message ||
+          `This ticket is already locked by ${
+            lockedBy || 'another agent'
+          }.`
+      );
+    };
+
+    const handleTicketError = ({ message } = {}) => {
+      setNotice(message || 'Unable to create ticket.');
+    };
+
+    socket.on('connect', handleConnect);
+    socket.on('disconnect', handleDisconnect);
+    socket.on('dashboard_state', handleDashboardState);
+    socket.on('ticket_created', handleTicketCreated);
+    socket.on('tickets_updated', handleTicketsUpdated);
+    socket.on('locks_updated', handleLocksUpdated);
+    socket.on('lock_rejected', handleLockRejected);
+    socket.on('ticket_error', handleTicketError);
+
+    if (!socket.connected) {
+      socket.connect();
+    } else {
+      socket.emit('join_dashboard');
+    }
+
+    return () => {
+      socket.off('connect', handleConnect);
+      socket.off('disconnect', handleDisconnect);
+      socket.off('dashboard_state', handleDashboardState);
+      socket.off('ticket_created', handleTicketCreated);
+      socket.off('tickets_updated', handleTicketsUpdated);
+      socket.off('locks_updated', handleLocksUpdated);
+      socket.off('lock_rejected', handleLockRejected);
+      socket.off('ticket_error', handleTicketError);
+    };
+  }, [pendingLockTicket]);
+
+  // Search and status filtering.
+  const filteredTickets = tickets.filter((ticket) => {
+    const query = search.toLowerCase();
+
     const matchesSearch =
-      ticket.id.toLowerCase().includes(search.toLowerCase()) ||
-      ticket.customer.toLowerCase().includes(search.toLowerCase()) ||
-      ticket.subject.toLowerCase().includes(search.toLowerCase());
+      ticket.id.toLowerCase().includes(query) ||
+      ticket.truckId.toLowerCase().includes(query) ||
+      ticket.issue.toLowerCase().includes(query);
 
     const matchesStatus =
       status === 'All' || ticket.status === status;
@@ -38,127 +137,145 @@ function Tickets() {
     return matchesSearch && matchesStatus;
   });
 
-  const openTickets = allTickets.filter(
-    (ticket) => ticket.status === 'Open'
-  ).length;
-
-  const inProgressTickets = allTickets.filter(
-    (ticket) => ticket.status === 'In Progress'
-  ).length;
-
-  const resolvedTickets = allTickets.filter(
-    (ticket) => ticket.status === 'Resolved'
-  ).length;
-
-  const handleInputChange = (event) => {
-    const { name, value } = event.target;
-
-    setFormData((previous) => ({
-      ...previous,
-      [name]: value,
-    }));
-  };
-
-  const handleCreateTicket = (event) => {
+  // Create a new dispatch ticket.
+  const createTicket = (event) => {
     event.preventDefault();
 
-    const customer = formData.customer.trim();
-    const subject = formData.subject.trim();
-
-    if (!customer || !subject) {
+    if (!truckId.trim() || !issue.trim() || !connected) {
       return;
     }
 
-    const highestTicketNumber = allTickets.reduce((highest, ticket) => {
-      const number = Number(ticket.id.replace('TKT-', ''));
-
-      return Number.isFinite(number)
-        ? Math.max(highest, number)
-        : highest;
-    }, 0);
-
-    const initials = customer
-      .split(/\s+/)
-      .filter(Boolean)
-      .map((part) => part[0])
-      .join('')
-      .slice(0, 2)
-      .toUpperCase();
-
-    const newTicket = {
-      id: `TKT-${highestTicketNumber + 1}`,
-      customer,
-      initials,
-      subject,
-      priority: formData.priority,
-      status: 'Open',
-      agent: formData.agent,
-      updated: 'Just now',
-    };
-
-    setAllTickets((previous) => [newTicket, ...previous]);
-
-    setFormData({
-      customer: '',
-      subject: '',
-      priority: 'Medium',
-      agent: 'Unassigned',
+    socket.emit('create_ticket', {
+      truckId: truckId.trim(),
+      issue: issue.trim(),
     });
 
-    setSearch('');
-    setStatus('All');
+    setTruckId('');
+    setIssue('');
     setShowForm(false);
+    setNotice('');
   };
+
+  // Request a lock from the server before opening the editor.
+  const lockTicket = (ticketId) => {
+    if (!connected || pendingLockTicket) {
+      setNotice('Please wait for the server connection.');
+      return;
+    }
+
+    setNotice('');
+    setPendingLockTicket(ticketId);
+
+    socket.emit('lock_ticket', {
+      ticketId,
+      agentName,
+    });
+  };
+
+  // Save resolution and release the lock.
+  const saveResolution = () => {
+    if (!editingTicket || !resolution.trim() || !connected) {
+      return;
+    }
+
+    socket.emit('unlock_ticket', {
+      ticketId: editingTicket,
+      resolution: resolution.trim(),
+      status: 'Resolved',
+    });
+
+    setEditingTicket(null);
+    setResolution('');
+  };
+
+  // Close the editor without saving.
+  const closeEditor = () => {
+    if (!editingTicket) {
+      return;
+    }
+
+    socket.emit('unlock_ticket', {
+      ticketId: editingTicket,
+    });
+
+    setEditingTicket(null);
+    setResolution('');
+  };
+
+  const openCount = tickets.filter(
+    (ticket) => ticket.status === 'Open'
+  ).length;
+
+  const resolvedCount = tickets.filter(
+    (ticket) => ticket.status === 'Resolved'
+  ).length;
 
   return (
     <div className="tickets-page">
       <div className="tickets-page-header">
         <div>
-          <h1>Tickets</h1>
-          <p>Manage and monitor customer support tickets.</p>
+          <h1>Live Ticket Board</h1>
+          <p>
+            Manage dispatch issues with real-time agent collaboration.
+          </p>
         </div>
 
         <button
           className="create-ticket-btn"
           type="button"
           onClick={() => setShowForm(true)}
+          disabled={!connected}
         >
           <Plus size={18} />
           Create Ticket
         </button>
       </div>
 
+      <div className="tickets-connection-status">
+        {connected ? <Wifi size={17} /> : <WifiOff size={17} />}
+
+        {connected
+          ? 'Connected to live server'
+          : 'Connection Lost: Reconnecting...'}
+      </div>
+
+      {notice && (
+        <div className="ticket-notice" role="alert">
+          {notice}
+
+          <button
+            type="button"
+            onClick={() => setNotice('')}
+            aria-label="Dismiss"
+          >
+            <X size={16} />
+          </button>
+        </div>
+      )}
+
       <div className="tickets-summary">
         <div className="ticket-summary-card">
           <Ticket size={20} />
           <span>Total Tickets</span>
-          <strong>{allTickets.length}</strong>
+          <strong>{tickets.length}</strong>
         </div>
 
         <div className="ticket-summary-card">
-          <Clock size={20} />
           <span>Open Tickets</span>
-          <strong>{openTickets}</strong>
+          <strong>{openCount}</strong>
         </div>
 
         <div className="ticket-summary-card">
-          <AlertCircle size={20} />
-          <span>In Progress</span>
-          <strong>{inProgressTickets}</strong>
-        </div>
-
-        <div className="ticket-summary-card">
-          <CheckCircle size={20} />
-          <span>Resolved</span>
-          <strong>{resolvedTickets}</strong>
+          <span>Resolved Tickets</span>
+          <strong>{resolvedCount}</strong>
         </div>
       </div>
 
       <section className="tickets-management">
         <div className="tickets-management-header">
           <div>
-            <h2>All Tickets</h2>
-            <p>View and manage customer requests.</p>
+            <h2>All Dispatch Tickets</h2>
+            <p>Live ticket status and editing locks.</p>
           </div>
 
           <div className="tickets-controls">
@@ -173,19 +290,15 @@ function Tickets() {
               />
             </div>
 
-            <div className="tickets-filter">
-              <Filter size={16} />
-
-              <select
-                value={status}
-                onChange={(event) => setStatus(event.target.value)}
-              >
-                <option value="All">All Status</option>
-                <option value="Open">Open</option>
-                <option value="In Progress">In Progress</option>
-                <option value="Resolved">Resolved</option>
-              </select>
-            </div>
+            <select
+              className="tickets-filter"
+              value={status}
+              onChange={(event) => setStatus(event.target.value)}
+            >
+              <option value="All">All Status</option>
+              <option value="Open">Open</option>
+              <option value="Resolved">Resolved</option>
+            </select>
           </div>
         </div>
 
@@ -194,70 +307,127 @@ function Tickets() {
             <thead>
               <tr>
                 <th>Ticket</th>
-                <th>Customer</th>
-                <th>Subject</th>
-                <th>Priority</th>
+                <th>Truck ID</th>
+                <th>Issue</th>
                 <th>Status</th>
-                <th>Assigned Agent</th>
-                <th>Updated</th>
+                <th>Resolution</th>
+                <th>Lock Status</th>
                 <th>Action</th>
               </tr>
             </thead>
 
             <tbody>
-              {tickets.length > 0 ? (
-                tickets.map((ticket) => (
-                  <tr key={ticket.id}>
+              {filteredTickets.map((ticket) => {
+                const lock = locks[ticket.id];
+
+                const lockedByOther =
+                  lock && lock.socketId !== socket.id;
+
+                const isEditing = editingTicket === ticket.id;
+
+                const isPending =
+                  pendingLockTicket === ticket.id;
+
+                return (
+                  <tr
+                    key={ticket.id}
+                    className={
+                      lockedByOther ? 'ticket-locked-row' : ''
+                    }
+                  >
                     <td className="ticket-id">{ticket.id}</td>
-
-                    <td>
-                      <div className="ticket-customer">
-                        <span className="customer-avatar">
-                          {ticket.initials}
-                        </span>
-                        {ticket.customer}
-                      </div>
-                    </td>
-
-                    <td>{ticket.subject}</td>
-
-                    <td>
-                      <span
-                        className={`priority-badge ${ticket.priority.toLowerCase()}`}
-                      >
-                        {ticket.priority}
-                      </span>
-                    </td>
+                    <td>{ticket.truckId}</td>
+                    <td>{ticket.issue}</td>
 
                     <td>
                       <span
                         className={`status-badge ${ticket.status
                           .toLowerCase()
-                          .replace(' ', '-')}`}
+                          .replace(/\s+/g, '-')}`}
                       >
                         {ticket.status}
                       </span>
                     </td>
 
-                    <td>{ticket.agent}</td>
-
-                    <td>{ticket.updated}</td>
+                    <td>{ticket.resolution || '—'}</td>
 
                     <td>
-                      <button
-                        type="button"
-                        className="ticket-action-btn"
-                        aria-label={`More options for ${ticket.id}`}
-                      >
-                        <MoreHorizontal size={18} />
-                      </button>
+                      {lock ? (
+                        <span>
+                          <Lock size={14} />
+                          {' '}Locked by {lock.agentName}
+                        </span>
+                      ) : (
+                        <span>
+                          <Unlock size={14} />
+                          {' '}Available
+                        </span>
+                      )}
+                    </td>
+
+                    <td>
+                      {isEditing ? (
+                        <div className="ticket-edit-actions">
+                          <textarea
+                            value={resolution}
+                            onChange={(event) =>
+                              setResolution(event.target.value)
+                            }
+                            placeholder="Enter resolution..."
+                            rows={2}
+                          />
+
+                          <button
+                            type="button"
+                            onClick={saveResolution}
+                            disabled={
+                              !resolution.trim() || !connected
+                            }
+                          >
+                            <Save size={15} />
+                            Save
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={closeEditor}
+                            disabled={!connected}
+                          >
+                            <X size={15} />
+                            Close
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          className="ticket-action-btn"
+                          disabled={
+                            Boolean(lock) ||
+                            !connected ||
+                            Boolean(pendingLockTicket)
+                          }
+                          onClick={() => lockTicket(ticket.id)}
+                        >
+                          <Lock size={16} />
+
+                          {isPending
+                            ? 'Locking...'
+                            : lockedByOther
+                              ? 'Locked'
+                              : 'Edit'}
+                        </button>
+                      )}
                     </td>
                   </tr>
-                ))
-              ) : (
+                );
+              })}
+
+              {filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan="8" className="empty-tickets">
-                    No tickets found.
+                  <td colSpan="7" className="empty-tickets">
+                    {connected
+                      ? 'No tickets found.'
+                      : 'Waiting for server connection...'}
                   </td>
                 </tr>
               )}
@@ -266,7 +436,7 @@ function Tickets() {
         </div>
 
         <div className="tickets-footer">
-          Showing {tickets.length} of {allTickets.length} tickets
+          Showing {filteredTickets.length} of {tickets.length} tickets
         </div>
       </section>
 
@@ -279,78 +449,52 @@ function Tickets() {
             className="ticket-modal"
             role="dialog"
             aria-modal="true"
-            aria-labelledby="create-ticket-title"
+            aria-labelledby="ticket-modal-title"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="ticket-modal-header">
               <div>
-                <h2 id="create-ticket-title">Create Ticket</h2>
-                <p>Add a new customer support request.</p>
+                <h2 id="ticket-modal-title">
+                  Create Dispatch Ticket
+                </h2>
+                <p>Add a new truck issue.</p>
               </div>
 
               <button
                 type="button"
                 className="ticket-modal-close"
-                aria-label="Close form"
                 onClick={() => setShowForm(false)}
+                aria-label="Close form"
               >
                 <X size={20} />
               </button>
             </div>
 
-            <form onSubmit={handleCreateTicket}>
+            <form onSubmit={createTicket}>
               <label>
-                Customer Name
+                Truck ID
+
                 <input
-                  type="text"
-                  name="customer"
-                  placeholder="Enter customer name"
-                  value={formData.customer}
-                  onChange={handleInputChange}
+                  value={truckId}
+                  onChange={(event) =>
+                    setTruckId(event.target.value)
+                  }
+                  placeholder="Example: TX-9982"
                   required
                 />
               </label>
 
               <label>
-                Subject
-                <input
-                  type="text"
-                  name="subject"
-                  placeholder="Enter ticket subject"
-                  value={formData.subject}
-                  onChange={handleInputChange}
+                Issue
+
+                <textarea
+                  value={issue}
+                  onChange={(event) =>
+                    setIssue(event.target.value)
+                  }
+                  placeholder="Describe the dispatch issue..."
                   required
                 />
-              </label>
-
-              <label>
-                Priority
-                <select
-                  name="priority"
-                  value={formData.priority}
-                  onChange={handleInputChange}
-                >
-                  <option value="Low">Low</option>
-                  <option value="Medium">Medium</option>
-                  <option value="High">High</option>
-                </select>
-              </label>
-
-              <label>
-                Assigned Agent
-                <select
-                  name="agent"
-                  value={formData.agent}
-                  onChange={handleInputChange}
-                >
-                  <option value="Unassigned">Unassigned</option>
-                  <option value="Aarav Roy">Aarav Roy</option>
-                  <option value="Priya Sharma">Priya Sharma</option>
-                  <option value="Dev Kumar">Dev Kumar</option>
-                  <option value="Meera Singh">Meera Singh</option>
-                  <option value="Rahul Verma">Rahul Verma</option>
-                  <option value="Ananya Gupta">Ananya Gupta</option>
-                </select>
               </label>
 
               <div className="ticket-modal-actions">
@@ -365,6 +509,7 @@ function Tickets() {
                 <button
                   type="submit"
                   className="create-ticket-btn"
+                  disabled={!connected}
                 >
                   <Plus size={17} />
                   Create Ticket

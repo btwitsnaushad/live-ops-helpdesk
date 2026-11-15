@@ -1,3 +1,8 @@
+
+/* ========================================
+   TICKETS PAGE
+======================================== */
+
 .tickets-page {
   width: 100%;
   min-width: 0;
@@ -37,12 +42,26 @@
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background 0.2s ease, border-color 0.2s ease;
 }
 
-/* Summary Cards */
+.create-ticket-btn:hover {
+  background: #2389ed;
+  border-color: #2389ed;
+}
+
+.create-ticket-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* ========================================
+   SUMMARY CARDS
+======================================== */
+
 .tickets-summary {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 16px;
   margin-bottom: 28px;
 }
@@ -74,7 +93,10 @@
   font-size: 22px;
 }
 
-/* Tickets Management */
+/* ========================================
+   TICKETS MANAGEMENT
+======================================== */
+
 .tickets-management {
   min-width: 0;
   overflow: hidden;
@@ -102,7 +124,10 @@
   font-size: 13px;
 }
 
-/* Search and Filter */
+/* ========================================
+   SEARCH AND FILTER
+======================================== */
+
 .tickets-controls {
   display: flex;
   align-items: center;
@@ -135,13 +160,11 @@
   color: var(--muted);
 }
 
-.tickets-filter select {
-  border: none;
-  outline: none;
-  background: transparent;
-  color: var(--text);
-  font-size: 13px;
+/* The JSX applies tickets-filter directly to select */
+.tickets-filter {
   cursor: pointer;
+  outline: none;
+  font-size: 13px;
 }
 
 .tickets-filter option {
@@ -149,7 +172,10 @@
   color: var(--text);
 }
 
-/* Table */
+/* ========================================
+   TICKETS TABLE
+======================================== */
+
 .tickets-table-wrapper {
   width: 100%;
   overflow-x: auto;
@@ -209,6 +235,10 @@
   font-weight: 600;
 }
 
+/* ========================================
+   STATUS BADGES
+======================================== */
+
 .priority-badge,
 .status-badge {
   display: inline-flex;
@@ -256,6 +286,10 @@
   border-color: rgba(52, 211, 153, 0.25);
 }
 
+/* ========================================
+   TICKET ACTIONS
+======================================== */
+
 .ticket-action-btn {
   display: inline-flex;
   align-items: center;
@@ -273,6 +307,57 @@
   color: var(--text);
 }
 
+.ticket-action-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ticket-locked-row {
+  background: rgba(57, 157, 255, 0.06);
+}
+
+.ticket-edit-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 260px;
+}
+
+.ticket-edit-actions textarea {
+  width: 160px;
+  min-height: 38px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-family: inherit;
+  font-size: 12px;
+  resize: vertical;
+}
+
+.ticket-edit-actions button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.ticket-edit-actions button:hover {
+  border-color: #399dff;
+}
+
+/* ========================================
+   EMPTY STATE AND FOOTER
+======================================== */
+
 .empty-tickets {
   padding: 40px !important;
   text-align: center;
@@ -285,7 +370,188 @@
   font-size: 12px;
 }
 
-/* Responsive */
+/* ========================================
+   CONNECTION STATUS AND NOTIFICATION
+======================================== */
+
+.tickets-connection-status {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 12px 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ticket-notice {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+  padding: 12px 16px;
+  border: 1px solid rgba(251, 191, 36, 0.3);
+  border-radius: 8px;
+  background: rgba(251, 191, 36, 0.08);
+  color: #fbbf24;
+  font-size: 13px;
+}
+
+.ticket-notice button {
+  display: flex;
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+
+/* ========================================
+   CREATE TICKET MODAL
+======================================== */
+
+.ticket-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(2, 6, 23, 0.78);
+  backdrop-filter: blur(5px);
+}
+
+.ticket-modal {
+  width: 100%;
+  max-width: 480px;
+  max-height: calc(100vh - 40px);
+  overflow-y: auto;
+  padding: 28px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  color: var(--text);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
+}
+
+.ticket-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 26px;
+}
+
+.ticket-modal-header h2 {
+  margin: 0;
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.ticket-modal-header p {
+  margin: 8px 0 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.ticket-modal-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  flex-shrink: 0;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.ticket-modal-close:hover {
+  background: var(--surface-hover);
+  color: var(--text);
+}
+
+.ticket-modal form {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.ticket-modal form label {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.ticket-modal form input,
+.ticket-modal form textarea {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 12px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  outline: none;
+  color: var(--text);
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.ticket-modal form textarea {
+  min-height: 110px;
+  resize: vertical;
+}
+
+.ticket-modal form input:focus,
+.ticket-modal form textarea:focus {
+  border-color: #399dff;
+  box-shadow: 0 0 0 3px rgba(57, 157, 255, 0.12);
+}
+
+.ticket-modal form input::placeholder,
+.ticket-modal form textarea::placeholder {
+  color: var(--muted);
+}
+
+.ticket-modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  align-items: center;
+  gap: 12px;
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--border);
+}
+
+.ticket-cancel-btn {
+  padding: 11px 18px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.ticket-cancel-btn:hover {
+  background: var(--surface-hover);
+}
+
+.ticket-modal-actions .create-ticket-btn {
+  white-space: nowrap;
+}
+
+/* ========================================
+   RESPONSIVE LAYOUT
+======================================== */
+
 @media (max-width: 900px) {
   .tickets-summary {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -318,5 +584,19 @@
 
   .tickets-search input {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .ticket-modal {
+    padding: 20px;
+  }
+
+  .ticket-modal-header h2 {
+    font-size: 19px;
+  }
+
+  .ticket-modal-actions {
+    flex-wrap: wrap;
   }
 }
