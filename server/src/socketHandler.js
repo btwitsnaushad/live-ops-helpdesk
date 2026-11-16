@@ -1,9 +1,10 @@
+
 const {
   activeLocks,
   getTickets,
   addTicket,
   updateTicketResolution,
-  serializeLocks
+  serializeLocks,
 } = require('./ticketStore');
 
 const ALLOWED_STATUSES = ['Open', 'In Progress', 'Resolved'];
@@ -12,17 +13,20 @@ const registerSocketHandlers = (io) => {
   io.on('connection', (socket) => {
     console.log(`Agent connected: ${socket.id}`);
 
-    // Send the latest dashboard data to the connected agent
+    // Send the current tickets and lock information to a new agent.
     socket.on('join_dashboard', () => {
       socket.emit('dashboard_state', {
         tickets: getTickets(),
-        locks: serializeLocks()
+        locks: serializeLocks(),
       });
     });
 
-    // Create a new dispatch ticket
+    // Create a new dispatch ticket and share it with all agents.
     socket.on('create_ticket', (data = {}) => {
-      const { truckId, issue } = data;
+      const payload =
+        data && typeof data === 'object' ? data : {};
+
+      const { truckId, issue } = payload;
 
       if (
         typeof truckId !== 'string' ||
@@ -31,117 +35,165 @@ const registerSocketHandlers = (io) => {
         !issue.trim()
       ) {
         socket.emit('ticket_error', {
-          message: 'Truck ID and issue are required.'
+          message: 'Truck ID and issue are required.',
         });
         return;
       }
 
-      const newTicket = addTicket(truckId, issue);
+      try {
+        const newTicket = addTicket(
+          truckId.trim(),
+          issue.trim()
+        );
 
-      // Broadcast the new ticket to all connected agents
-      io.emit('ticket_created', newTicket);
+        // Make the new ticket appear immediately on every connected dashboard.
+        io.emit('ticket_created', newTicket);
+      } catch (error) {
+        console.error('Ticket creation failed:', error.message);
+
+        socket.emit('ticket_error', {
+          message: 'Unable to create ticket. Please try again.',
+        });
+      }
     });
 
-    // Lock a ticket for editing
+    // Give one agent exclusive editing access to a ticket.
     socket.on('lock_ticket', (data = {}) => {
-      const { ticketId, agentName } = data;
+      const payload =
+        data && typeof data === 'object' ? data : {};
+
+      const { ticketId, agentName } = payload;
 
       if (typeof ticketId !== 'string' || !ticketId.trim()) {
+        socket.emit('lock_rejected', {
+          message: 'A valid ticket ID is required.',
+        });
         return;
       }
 
+      const requestedTicketId = ticketId.trim();
+
       const ticketExists = getTickets().some(
-        (ticket) => ticket.id === ticketId
+        (ticket) => ticket.id === requestedTicketId
       );
 
       if (!ticketExists) {
         socket.emit('lock_rejected', {
-          ticketId,
-          message: 'Ticket not found.'
+          ticketId: requestedTicketId,
+          message: 'Ticket not found.',
         });
         return;
       }
 
-      const existingLock = activeLocks.get(ticketId);
+      const existingLock = activeLocks.get(requestedTicketId);
 
-      // Do not allow another agent to take an existing lock
+      // Prevent another agent from editing an already locked ticket.
       if (existingLock && existingLock.socketId !== socket.id) {
         socket.emit('lock_rejected', {
-          ticketId,
+          ticketId: requestedTicketId,
           lockedBy: existingLock.agentName,
-          message: 'This ticket is already locked.'
+          message: 'This ticket is already locked.',
         });
         return;
       }
 
-      activeLocks.set(ticketId, {
+      // Avoid creating a new lock when this agent already owns it.
+      if (existingLock?.socketId === socket.id) {
+        socket.emit('lock_granted', {
+          ticketId: requestedTicketId,
+        });
+        return;
+      }
+
+      const lockDetails = {
         socketId: socket.id,
         agentName:
           typeof agentName === 'string' && agentName.trim()
             ? agentName.trim()
             : 'Support Agent',
-        lockedAt: Date.now()
-      });
+        lockedAt: Date.now(),
+      };
 
-      // Update the lock status for all connected agents
+      activeLocks.set(requestedTicketId, lockDetails);
+
+      // Notify every connected agent about the updated lock.
       io.emit('locks_updated', serializeLocks());
 
-      // Confirm the lock to the requesting agent
-      socket.emit('lock_granted', { ticketId });
+      // Confirm that the requesting agent owns the lock.
+      socket.emit('lock_granted', {
+        ticketId: requestedTicketId,
+      });
     });
 
-    // Save changes and release the ticket lock
+    // Save ticket changes when requested and release the editing lock.
     socket.on('unlock_ticket', (data = {}) => {
-      const { ticketId, resolution, status } = data;
+      const payload =
+        data && typeof data === 'object' ? data : {};
+
+      const { ticketId, resolution, status } = payload;
 
       if (typeof ticketId !== 'string' || !ticketId.trim()) {
         return;
       }
 
-      const existingLock = activeLocks.get(ticketId);
+      const requestedTicketId = ticketId.trim();
+      const existingLock = activeLocks.get(requestedTicketId);
 
-      // Only the agent holding the lock can release it
+      // Only the agent who owns the lock can save or release the ticket.
       if (!existingLock || existingLock.socketId !== socket.id) {
         return;
       }
 
-      // Save the resolution only when a non-empty value is provided
+      // Save the resolution only when valid, non-empty text is provided.
       if (typeof resolution === 'string' && resolution.trim()) {
         const selectedStatus = ALLOWED_STATUSES.includes(status)
           ? status
           : 'Resolved';
 
-        const updatedTickets = updateTicketResolution(
-          ticketId,
-          resolution,
-          selectedStatus
-        );
+        try {
+          const updatedTickets = updateTicketResolution(
+            requestedTicketId,
+            resolution.trim(),
+            selectedStatus
+          );
 
-        // Broadcast updated tickets to all connected agents
-        io.emit('tickets_updated', updatedTickets);
+          // Share the updated ticket information with all agents.
+          io.emit('tickets_updated', updatedTickets);
+        } catch (error) {
+          console.error('Ticket update failed:', error.message);
+
+          socket.emit('ticket_error', {
+            message: 'Unable to save the ticket resolution.',
+          });
+
+          return;
+        }
       }
 
-      // Release the ticket lock
-      activeLocks.delete(ticketId);
+      // Release the lock after saving or closing the editor.
+      activeLocks.delete(requestedTicketId);
 
       io.emit('locks_updated', serializeLocks());
     });
 
-    // Automatically release all locks when an agent disconnects
+    // Release all locks owned by an agent when their connection ends.
     socket.on('disconnect', () => {
-      let lockReleased = false;
+      const releasedTicketIds = [];
 
       for (const [ticketId, lock] of activeLocks.entries()) {
         if (lock.socketId === socket.id) {
           activeLocks.delete(ticketId);
-          lockReleased = true;
-
-          console.log(`Released lock for ticket: ${ticketId}`);
+          releasedTicketIds.push(ticketId);
         }
       }
 
-      if (lockReleased) {
+      // Broadcast the updated lock information when necessary.
+      if (releasedTicketIds.length > 0) {
         io.emit('locks_updated', serializeLocks());
+
+        releasedTicketIds.forEach((ticketId) => {
+          console.log(`Released lock for ticket: ${ticketId}`);
+        });
       }
 
       console.log(`Agent disconnected: ${socket.id}`);
