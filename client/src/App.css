@@ -1,11 +1,4 @@
 @import './styles/variables.css';
 @import './styles/global.css';
-@import './styles/sidebar.css';
 @import './styles/layout.css';
-@import './styles/topbar.css';
-@import './styles/overview.css';
-@import './styles/recent-tickets.css';
-@import './styles/agents.css';
 @import './styles/tickets.css';
-@import './styles/activity-logs.css';
-@import './styles/settings.css';

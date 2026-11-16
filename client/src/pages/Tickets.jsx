@@ -1,5 +1,4 @@
-
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Search,
   Plus,
@@ -21,16 +20,26 @@ function Tickets() {
   const [status, setStatus] = useState('All');
   const [connected, setConnected] = useState(socket.connected);
   const [notice, setNotice] = useState('');
+
   const [showForm, setShowForm] = useState(false);
   const [truckId, setTruckId] = useState('');
   const [issue, setIssue] = useState('');
+
   const [editingTicket, setEditingTicket] = useState(null);
   const [pendingLockTicket, setPendingLockTicket] = useState(null);
   const [resolution, setResolution] = useState('');
 
+  const pendingLockRef = useRef(null);
+
   const agentName = 'Support Agent';
 
-  // Set up socket listeners and load dashboard data.
+  // Keep the pending lock reference in sync with React state.
+  const updatePendingLock = (ticketId) => {
+    pendingLockRef.current = ticketId;
+    setPendingLockTicket(ticketId);
+  };
+
+  // Register real-time events and join the shared ticket dashboard.
   useEffect(() => {
     const handleConnect = () => {
       setConnected(true);
@@ -40,46 +49,55 @@ function Tickets() {
 
     const handleDisconnect = () => {
       setConnected(false);
-      setPendingLockTicket(null);
+      updatePendingLock(null);
       setEditingTicket(null);
       setResolution('');
       setNotice('Connection Lost: Reconnecting...');
     };
 
     const handleDashboardState = (data = {}) => {
-      setTickets(data.tickets || []);
+      setTickets(Array.isArray(data.tickets) ? data.tickets : []);
       setLocks(data.locks || {});
     };
 
     const handleTicketCreated = (ticket) => {
-      setTickets((previous) => [
+      if (!ticket?.id) return;
+
+      setTickets((previousTickets) => [
         ticket,
-        ...previous.filter((item) => item.id !== ticket.id),
+        ...previousTickets.filter(
+          (item) => item.id !== ticket.id
+        ),
       ]);
     };
 
     const handleTicketsUpdated = (updatedTickets) => {
-      setTickets(updatedTickets || []);
+      setTickets(
+        Array.isArray(updatedTickets) ? updatedTickets : []
+      );
     };
 
     const handleLocksUpdated = (updatedLocks) => {
       const currentLocks = updatedLocks || {};
+
       setLocks(currentLocks);
 
-      // Open the editor only after the server confirms our lock.
-      if (pendingLockTicket) {
-        const confirmedLock = currentLocks[pendingLockTicket];
+      const pendingTicketId = pendingLockRef.current;
+
+      // Open the editor only after the server confirms ownership.
+      if (pendingTicketId) {
+        const confirmedLock = currentLocks[pendingTicketId];
 
         if (confirmedLock?.socketId === socket.id) {
-          setEditingTicket(pendingLockTicket);
+          setEditingTicket(pendingTicketId);
           setResolution('');
-          setPendingLockTicket(null);
+          updatePendingLock(null);
         }
       }
     };
 
     const handleLockRejected = ({ lockedBy, message } = {}) => {
-      setPendingLockTicket(null);
+      updatePendingLock(null);
       setEditingTicket(null);
       setResolution('');
 
@@ -92,7 +110,7 @@ function Tickets() {
     };
 
     const handleTicketError = ({ message } = {}) => {
-      setNotice(message || 'Unable to create ticket.');
+      setNotice(message || 'Unable to complete the ticket request.');
     };
 
     socket.on('connect', handleConnect);
@@ -110,6 +128,7 @@ function Tickets() {
       socket.emit('join_dashboard');
     }
 
+    // Remove only the listeners registered by this component.
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
@@ -120,16 +139,20 @@ function Tickets() {
       socket.off('lock_rejected', handleLockRejected);
       socket.off('ticket_error', handleTicketError);
     };
-  }, [pendingLockTicket]);
+  }, []);
 
-  // Search and status filtering.
+  // Filter tickets using the search term and selected status.
   const filteredTickets = tickets.filter((ticket) => {
-    const query = search.toLowerCase();
+    const query = search.trim().toLowerCase();
+
+    const ticketId = String(ticket.id || '').toLowerCase();
+    const currentTruckId = String(ticket.truckId || '').toLowerCase();
+    const ticketIssue = String(ticket.issue || '').toLowerCase();
 
     const matchesSearch =
-      ticket.id.toLowerCase().includes(query) ||
-      ticket.truckId.toLowerCase().includes(query) ||
-      ticket.issue.toLowerCase().includes(query);
+      ticketId.includes(query) ||
+      currentTruckId.includes(query) ||
+      ticketIssue.includes(query);
 
     const matchesStatus =
       status === 'All' || ticket.status === status;
@@ -137,17 +160,26 @@ function Tickets() {
     return matchesSearch && matchesStatus;
   });
 
-  // Create a new dispatch ticket.
+  // Create a new ticket and share it with connected agents.
   const createTicket = (event) => {
     event.preventDefault();
 
-    if (!truckId.trim() || !issue.trim() || !connected) {
+    const trimmedTruckId = truckId.trim();
+    const trimmedIssue = issue.trim();
+
+    if (!trimmedTruckId || !trimmedIssue) {
+      setNotice('Please enter both Truck ID and issue details.');
+      return;
+    }
+
+    if (!connected) {
+      setNotice('Cannot create a ticket while the server is disconnected.');
       return;
     }
 
     socket.emit('create_ticket', {
-      truckId: truckId.trim(),
-      issue: issue.trim(),
+      truckId: trimmedTruckId,
+      issue: trimmedIssue,
     });
 
     setTruckId('');
@@ -156,15 +188,20 @@ function Tickets() {
     setNotice('');
   };
 
-  // Request a lock from the server before opening the editor.
+  // Ask the server to lock a ticket before opening its editor.
   const lockTicket = (ticketId) => {
-    if (!connected || pendingLockTicket) {
+    if (!connected) {
       setNotice('Please wait for the server connection.');
       return;
     }
 
+    if (pendingLockRef.current) {
+      setNotice('Please wait for the current lock request to finish.');
+      return;
+    }
+
     setNotice('');
-    setPendingLockTicket(ticketId);
+    updatePendingLock(ticketId);
 
     socket.emit('lock_ticket', {
       ticketId,
@@ -172,9 +209,14 @@ function Tickets() {
     });
   };
 
-  // Save resolution and release the lock.
+  // Save the resolution and release the ticket lock.
   const saveResolution = () => {
-    if (!editingTicket || !resolution.trim() || !connected) {
+    if (!editingTicket || !resolution.trim()) {
+      return;
+    }
+
+    if (!connected) {
+      setNotice('Connection lost. Please reconnect before saving.');
       return;
     }
 
@@ -186,11 +228,12 @@ function Tickets() {
 
     setEditingTicket(null);
     setResolution('');
+    setNotice('');
   };
 
-  // Close the editor without saving.
+  // Close the editor and release the lock without saving.
   const closeEditor = () => {
-    if (!editingTicket) {
+    if (!editingTicket || !connected) {
       return;
     }
 
@@ -202,6 +245,7 @@ function Tickets() {
     setResolution('');
   };
 
+  // Calculate the current ticket summary.
   const openCount = tickets.filter(
     (ticket) => ticket.status === 'Open'
   ).length;
@@ -212,6 +256,7 @@ function Tickets() {
 
   return (
     <div className="tickets-page">
+      {/* Page heading and primary action */}
       <div className="tickets-page-header">
         <div>
           <h1>Live Ticket Board</h1>
@@ -223,7 +268,10 @@ function Tickets() {
         <button
           className="create-ticket-btn"
           type="button"
-          onClick={() => setShowForm(true)}
+          onClick={() => {
+            setNotice('');
+            setShowForm(true);
+          }}
           disabled={!connected}
         >
           <Plus size={18} />
@@ -231,7 +279,14 @@ function Tickets() {
         </button>
       </div>
 
-      <div className="tickets-connection-status">
+      {/* Live server connection status */}
+      <div
+        className={`tickets-connection-status ${
+          connected ? 'connected' : 'disconnected'
+        }`}
+        role="status"
+        aria-live="polite"
+      >
         {connected ? <Wifi size={17} /> : <WifiOff size={17} />}
 
         {connected
@@ -239,20 +294,22 @@ function Tickets() {
           : 'Connection Lost: Reconnecting...'}
       </div>
 
+      {/* Display server and action messages */}
       {notice && (
         <div className="ticket-notice" role="alert">
-          {notice}
+          <span>{notice}</span>
 
           <button
             type="button"
             onClick={() => setNotice('')}
-            aria-label="Dismiss"
+            aria-label="Dismiss notification"
           >
             <X size={16} />
           </button>
         </div>
       )}
 
+      {/* Ticket summary */}
       <div className="tickets-summary">
         <div className="ticket-summary-card">
           <Ticket size={20} />
@@ -271,6 +328,7 @@ function Tickets() {
         </div>
       </div>
 
+      {/* Main ticket management section */}
       <section className="tickets-management">
         <div className="tickets-management-header">
           <div>
@@ -278,13 +336,15 @@ function Tickets() {
             <p>Live ticket status and editing locks.</p>
           </div>
 
+          {/* Search and status filters */}
           <div className="tickets-controls">
             <div className="tickets-search">
               <Search size={17} />
 
               <input
-                type="text"
+                type="search"
                 placeholder="Search tickets..."
+                aria-label="Search tickets"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
               />
@@ -292,6 +352,7 @@ function Tickets() {
 
             <select
               className="tickets-filter"
+              aria-label="Filter tickets by status"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
             >
@@ -302,17 +363,18 @@ function Tickets() {
           </div>
         </div>
 
+        {/* Live ticket table */}
         <div className="tickets-table-wrapper">
           <table className="tickets-table">
             <thead>
               <tr>
-                <th>Ticket</th>
-                <th>Truck ID</th>
-                <th>Issue</th>
-                <th>Status</th>
-                <th>Resolution</th>
-                <th>Lock Status</th>
-                <th>Action</th>
+                <th scope="col">Ticket</th>
+                <th scope="col">Truck ID</th>
+                <th scope="col">Issue</th>
+                <th scope="col">Status</th>
+                <th scope="col">Resolution</th>
+                <th scope="col">Lock Status</th>
+                <th scope="col">Action</th>
               </tr>
             </thead>
 
@@ -321,12 +383,14 @@ function Tickets() {
                 const lock = locks[ticket.id];
 
                 const lockedByOther =
-                  lock && lock.socketId !== socket.id;
+                  Boolean(lock) && lock.socketId !== socket.id;
 
                 const isEditing = editingTicket === ticket.id;
+                const isPending = pendingLockTicket === ticket.id;
 
-                const isPending =
-                  pendingLockTicket === ticket.id;
+                const ticketStatus = String(
+                  ticket.status || 'Open'
+                );
 
                 return (
                   <tr
@@ -336,16 +400,18 @@ function Tickets() {
                     }
                   >
                     <td className="ticket-id">{ticket.id}</td>
+
                     <td>{ticket.truckId}</td>
+
                     <td>{ticket.issue}</td>
 
                     <td>
                       <span
-                        className={`status-badge ${ticket.status
+                        className={`status-badge ${ticketStatus
                           .toLowerCase()
                           .replace(/\s+/g, '-')}`}
                       >
-                        {ticket.status}
+                        {ticketStatus}
                       </span>
                     </td>
 
@@ -353,12 +419,12 @@ function Tickets() {
 
                     <td>
                       {lock ? (
-                        <span>
+                        <span className="ticket-lock-status">
                           <Lock size={14} />
                           {' '}Locked by {lock.agentName}
                         </span>
                       ) : (
-                        <span>
+                        <span className="ticket-lock-status">
                           <Unlock size={14} />
                           {' '}Available
                         </span>
@@ -374,15 +440,14 @@ function Tickets() {
                               setResolution(event.target.value)
                             }
                             placeholder="Enter resolution..."
+                            aria-label={`Resolution for ${ticket.id}`}
                             rows={2}
                           />
 
                           <button
                             type="button"
                             onClick={saveResolution}
-                            disabled={
-                              !resolution.trim() || !connected
-                            }
+                            disabled={!resolution.trim() || !connected}
                           >
                             <Save size={15} />
                             Save
@@ -422,9 +487,10 @@ function Tickets() {
                 );
               })}
 
+              {/* Empty state */}
               {filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan="7" className="empty-tickets">
+                  <td colSpan={7} className="empty-tickets">
                     {connected
                       ? 'No tickets found.'
                       : 'Waiting for server connection...'}
@@ -440,6 +506,7 @@ function Tickets() {
         </div>
       </section>
 
+      {/* Create ticket modal */}
       {showForm && (
         <div
           className="ticket-modal-overlay"
@@ -471,28 +538,27 @@ function Tickets() {
             </div>
 
             <form onSubmit={createTicket}>
-              <label>
+              <label htmlFor="truck-id">
                 Truck ID
 
                 <input
+                  id="truck-id"
                   value={truckId}
-                  onChange={(event) =>
-                    setTruckId(event.target.value)
-                  }
+                  onChange={(event) => setTruckId(event.target.value)}
                   placeholder="Example: TX-9982"
                   required
                 />
               </label>
 
-              <label>
+              <label htmlFor="ticket-issue">
                 Issue
 
                 <textarea
+                  id="ticket-issue"
                   value={issue}
-                  onChange={(event) =>
-                    setIssue(event.target.value)
-                  }
+                  onChange={(event) => setIssue(event.target.value)}
                   placeholder="Describe the dispatch issue..."
+                  rows={4}
                   required
                 />
               </label>

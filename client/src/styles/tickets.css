@@ -1,13 +1,14 @@
-
-/* ========================================
-   TICKETS PAGE
-======================================== */
+/* =========================================
+   LIVE OPS HELPDESK - TICKETS PAGE
+   ========================================= */
 
 .tickets-page {
   width: 100%;
   min-width: 0;
   color: var(--text);
 }
+
+/* Page heading */
 
 .tickets-page-header {
   display: flex;
@@ -19,15 +20,20 @@
 
 .tickets-page-header h1 {
   margin: 0;
+  color: var(--text);
   font-size: 30px;
   font-weight: 700;
+  letter-spacing: -0.7px;
 }
 
 .tickets-page-header p {
   margin: 8px 0 0;
   color: var(--muted);
   font-size: 14px;
+  line-height: 1.6;
 }
+
+/* Primary action button */
 
 .create-ticket-btn {
   display: inline-flex;
@@ -35,19 +41,26 @@
   justify-content: center;
   gap: 8px;
   padding: 11px 16px;
-  border: 1px solid #399dff;
-  border-radius: 8px;
-  background: #399dff;
-  color: #fff;
+  border: 1px solid var(--blue);
+  border-radius: var(--radius-sm);
+  background: var(--blue);
+  color: #ffffff;
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
-  transition: background 0.2s ease, border-color 0.2s ease;
+  transition: background var(--transition),
+    border-color var(--transition),
+    transform var(--transition);
 }
 
-.create-ticket-btn:hover {
-  background: #2389ed;
-  border-color: #2389ed;
+.create-ticket-btn:hover:not(:disabled) {
+  background: var(--blue-dark);
+  border-color: var(--blue-dark);
+  transform: translateY(-1px);
+}
+
+.create-ticket-btn:active:not(:disabled) {
+  transform: translateY(0);
 }
 
 .create-ticket-btn:disabled {
@@ -55,9 +68,9 @@
   cursor: not-allowed;
 }
 
-/* ========================================
-   SUMMARY CARDS
-======================================== */
+/* =========================================
+   TICKET SUMMARY
+   ========================================= */
 
 .tickets-summary {
   display: grid;
@@ -71,38 +84,48 @@
   align-items: center;
   gap: 12px;
   min-width: 0;
-  padding: 18px;
+  padding: 20px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
+  transition: border-color var(--transition),
+    background var(--transition);
+}
+
+.ticket-summary-card:hover {
+  background: var(--surface-hover);
+  border-color: var(--border-hover);
 }
 
 .ticket-summary-card > svg {
   flex-shrink: 0;
-  color: #399dff;
+  color: var(--blue-light);
 }
 
 .ticket-summary-card span {
   color: var(--muted);
   font-size: 13px;
+  font-weight: 500;
 }
 
 .ticket-summary-card strong {
   margin-left: auto;
   color: var(--text);
-  font-size: 22px;
+  font-size: 23px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
 }
 
-/* ========================================
-   TICKETS MANAGEMENT
-======================================== */
+/* =========================================
+   TICKET MANAGEMENT SECTION
+   ========================================= */
 
 .tickets-management {
   min-width: 0;
   overflow: hidden;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .tickets-management-header {
@@ -115,18 +138,21 @@
 
 .tickets-management-header h2 {
   margin: 0;
-  font-size: 20px;
+  color: var(--text);
+  font-size: 19px;
+  font-weight: 650;
 }
 
 .tickets-management-header p {
   margin: 7px 0 0;
   color: var(--muted);
   font-size: 13px;
+  line-height: 1.5;
 }
 
-/* ========================================
-   SEARCH AND FILTER
-======================================== */
+/* =========================================
+   SEARCH AND STATUS FILTER
+   ========================================= */
 
 .tickets-controls {
   display: flex;
@@ -139,16 +165,24 @@
   display: flex;
   align-items: center;
   gap: 9px;
-  padding: 10px 12px;
+  min-height: 40px;
+  padding: 9px 12px;
   background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   color: var(--muted);
+  transition: border-color var(--transition);
+}
+
+.tickets-search:focus-within,
+.tickets-filter:focus {
+  border-color: var(--blue);
 }
 
 .tickets-search input {
   width: 180px;
   min-width: 0;
+  padding: 0;
   border: none;
   outline: none;
   background: transparent;
@@ -160,7 +194,6 @@
   color: var(--muted);
 }
 
-/* The JSX applies tickets-filter directly to select */
 .tickets-filter {
   cursor: pointer;
   outline: none;
@@ -172,17 +205,20 @@
   color: var(--text);
 }
 
-/* ========================================
-   TICKETS TABLE
-======================================== */
+/* =========================================
+   TICKET TABLE
+   ========================================= */
 
 .tickets-table-wrapper {
   width: 100%;
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-hover) transparent;
 }
 
 .tickets-table {
   width: 100%;
+  min-width: 1050px;
   border-collapse: collapse;
   text-align: left;
   white-space: nowrap;
@@ -190,82 +226,55 @@
 
 .tickets-table th {
   padding: 15px 18px;
-  background: var(--bg);
+  background: rgba(8, 14, 27, 0.65);
   border-top: 1px solid var(--border);
   border-bottom: 1px solid var(--border);
   color: var(--muted);
   font-size: 11px;
   font-weight: 700;
+  letter-spacing: 0.6px;
   text-transform: uppercase;
 }
 
 .tickets-table td {
   padding: 16px 18px;
   border-bottom: 1px solid var(--border);
-  color: var(--text);
+  color: var(--text-secondary);
   font-size: 13px;
+  line-height: 1.5;
+}
+
+.tickets-table tbody tr {
+  transition: background var(--transition);
 }
 
 .tickets-table tbody tr:hover {
-  background: var(--surface-hover, rgba(255, 255, 255, 0.03));
+  background: var(--surface-hover);
+}
+
+.tickets-table tbody tr:last-child td {
+  border-bottom: none;
 }
 
 .ticket-id {
-  color: #399dff !important;
+  color: var(--blue-light) !important;
   font-weight: 600;
 }
 
-.ticket-customer {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.customer-avatar {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: #263f83;
-  color: #fff;
-  font-size: 11px;
-  font-weight: 600;
-}
-
-/* ========================================
+/* =========================================
    STATUS BADGES
-======================================== */
+   ========================================= */
 
-.priority-badge,
 .status-badge {
   display: inline-flex;
   align-items: center;
-  padding: 6px 10px;
+  justify-content: center;
+  padding: 5px 10px;
   border: 1px solid transparent;
   border-radius: 6px;
   font-size: 11px;
   font-weight: 600;
-}
-
-.priority-badge.high {
-  color: #fb7185;
-  background: rgba(251, 113, 133, 0.12);
-  border-color: rgba(251, 113, 133, 0.25);
-}
-
-.priority-badge.medium {
-  color: #fbbf24;
-  background: rgba(251, 191, 36, 0.12);
-  border-color: rgba(251, 191, 36, 0.25);
-}
-
-.priority-badge.low {
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.25);
+  letter-spacing: 0.2px;
 }
 
 .status-badge.open {
@@ -281,30 +290,47 @@
 }
 
 .status-badge.resolved {
-  color: #34d399;
-  background: rgba(52, 211, 153, 0.12);
-  border-color: rgba(52, 211, 153, 0.25);
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.12);
+  border-color: rgba(74, 222, 128, 0.25);
 }
 
-/* ========================================
-   TICKET ACTIONS
-======================================== */
+/* =========================================
+   TICKET LOCKING AND ACTIONS
+   ========================================= */
+
+/* A gray background makes another agent's lock
+   easy to identify on the live ticket board. */
+
+.ticket-locked-row {
+  background: rgba(148, 163, 184, 0.14);
+}
+
+.ticket-locked-row:hover {
+  background: rgba(148, 163, 184, 0.18) !important;
+}
 
 .ticket-action-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: 6px;
-  border: none;
-  border-radius: 6px;
-  background: transparent;
-  color: var(--muted);
+  gap: 7px;
+  min-height: 34px;
+  padding: 7px 11px;
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  background: var(--bg);
+  color: var(--text-secondary);
+  font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all var(--transition);
 }
 
-.ticket-action-btn:hover {
-  background: var(--bg);
-  color: var(--text);
+.ticket-action-btn:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: rgba(59, 130, 246, 0.1);
+  color: var(--blue-light);
 }
 
 .ticket-action-btn:disabled {
@@ -312,23 +338,19 @@
   cursor: not-allowed;
 }
 
-.ticket-locked-row {
-  background: rgba(57, 157, 255, 0.06);
-}
-
 .ticket-edit-actions {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 7px;
   min-width: 260px;
 }
 
 .ticket-edit-actions textarea {
   width: 160px;
-  min-height: 38px;
-  padding: 8px;
+  min-height: 40px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--bg);
   color: var(--text);
   font-family: inherit;
@@ -336,27 +358,42 @@
   resize: vertical;
 }
 
+.ticket-edit-actions textarea:focus {
+  outline: none;
+  border-color: var(--blue);
+}
+
 .ticket-edit-actions button {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 5px;
-  padding: 8px;
+  padding: 8px 10px;
   border: 1px solid var(--border);
-  border-radius: 6px;
+  border-radius: 7px;
   background: var(--bg);
   color: var(--text);
   font-size: 12px;
+  font-weight: 600;
   cursor: pointer;
   white-space: nowrap;
+  transition: border-color var(--transition),
+    background var(--transition);
 }
 
-.ticket-edit-actions button:hover {
-  border-color: #399dff;
+.ticket-edit-actions button:hover:not(:disabled) {
+  border-color: var(--blue);
+  background: var(--surface-hover);
 }
 
-/* ========================================
-   EMPTY STATE AND FOOTER
-======================================== */
+.ticket-edit-actions button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* =========================================
+   EMPTY STATE AND TABLE FOOTER
+   ========================================= */
 
 .empty-tickets {
   padding: 40px !important;
@@ -365,24 +402,43 @@
 }
 
 .tickets-footer {
-  padding: 16px 22px;
+  padding: 15px 22px;
+  border-top: 1px solid var(--border);
   color: var(--muted);
   font-size: 12px;
 }
 
-/* ========================================
-   CONNECTION STATUS AND NOTIFICATION
-======================================== */
+/* =========================================
+   CONNECTION STATUS
+   ========================================= */
 
 .tickets-connection-status {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 7px;
+  gap: 8px;
   margin: 12px 0;
+  padding: 11px 14px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-sm);
   color: var(--muted);
-  font-size: 14px;
+  font-size: 13px;
+  font-weight: 500;
 }
+
+.tickets-connection-status.connected {
+  color: var(--green);
+  background: rgba(74, 222, 128, 0.08);
+  border-color: rgba(74, 222, 128, 0.16);
+}
+
+.tickets-connection-status.disconnected {
+  color: var(--red);
+  background: rgba(248, 113, 113, 0.12);
+  border-color: rgba(248, 113, 113, 0.3);
+}
+
+/* General ticket notifications */
 
 .ticket-notice {
   display: flex;
@@ -392,7 +448,7 @@
   margin-bottom: 16px;
   padding: 12px 16px;
   border: 1px solid rgba(251, 191, 36, 0.3);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: rgba(251, 191, 36, 0.08);
   color: #fbbf24;
   font-size: 13px;
@@ -400,15 +456,17 @@
 
 .ticket-notice button {
   display: flex;
+  align-items: center;
+  justify-content: center;
   border: none;
   background: transparent;
   color: inherit;
   cursor: pointer;
 }
 
-/* ========================================
+/* =========================================
    CREATE TICKET MODAL
-======================================== */
+   ========================================= */
 
 .ticket-modal-overlay {
   position: fixed;
@@ -419,7 +477,7 @@
   justify-content: center;
   padding: 20px;
   background: rgba(2, 6, 23, 0.78);
-  backdrop-filter: blur(5px);
+  backdrop-filter: blur(6px);
 }
 
 .ticket-modal {
@@ -430,7 +488,7 @@
   padding: 28px;
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   color: var(--text);
   box-shadow: 0 24px 80px rgba(0, 0, 0, 0.45);
 }
@@ -445,6 +503,7 @@
 
 .ticket-modal-header h2 {
   margin: 0;
+  color: var(--text);
   font-size: 22px;
   font-weight: 700;
 }
@@ -459,14 +518,15 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px;
-  height: 34px;
+  width: 36px;
+  height: 36px;
   flex-shrink: 0;
   border: 1px solid var(--border);
   border-radius: 8px;
   background: var(--bg);
   color: var(--muted);
   cursor: pointer;
+  transition: all var(--transition);
 }
 
 .ticket-modal-close:hover {
@@ -492,31 +552,32 @@
 .ticket-modal form input,
 .ticket-modal form textarea {
   width: 100%;
-  box-sizing: border-box;
   padding: 12px 14px;
-  background: var(--bg);
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   outline: none;
+  background: var(--bg);
   color: var(--text);
   font-family: inherit;
   font-size: 14px;
-}
-
-.ticket-modal form textarea {
-  min-height: 110px;
-  resize: vertical;
+  transition: border-color var(--transition),
+    box-shadow var(--transition);
 }
 
 .ticket-modal form input:focus,
 .ticket-modal form textarea:focus {
-  border-color: #399dff;
-  box-shadow: 0 0 0 3px rgba(57, 157, 255, 0.12);
+  border-color: var(--blue);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.12);
 }
 
 .ticket-modal form input::placeholder,
 .ticket-modal form textarea::placeholder {
   color: var(--muted);
+}
+
+.ticket-modal form textarea {
+  min-height: 110px;
+  resize: vertical;
 }
 
 .ticket-modal-actions {
@@ -532,12 +593,13 @@
 .ticket-cancel-btn {
   padding: 11px 18px;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-sm);
   background: var(--bg);
   color: var(--text);
   font-size: 14px;
   font-weight: 600;
   cursor: pointer;
+  transition: background var(--transition);
 }
 
 .ticket-cancel-btn:hover {
@@ -548,9 +610,9 @@
   white-space: nowrap;
 }
 
-/* ========================================
+/* =========================================
    RESPONSIVE LAYOUT
-======================================== */
+   ========================================= */
 
 @media (max-width: 900px) {
   .tickets-summary {
@@ -574,6 +636,10 @@
     flex-direction: column;
   }
 
+  .tickets-page-header h1 {
+    font-size: 26px;
+  }
+
   .tickets-summary {
     grid-template-columns: 1fr;
   }
@@ -584,6 +650,14 @@
 
   .tickets-search input {
     width: 100%;
+  }
+
+  .tickets-management-header {
+    padding: 18px;
+  }
+
+  .ticket-summary-card {
+    padding: 16px;
   }
 }
 
@@ -598,5 +672,9 @@
 
   .ticket-modal-actions {
     flex-wrap: wrap;
+  }
+
+  .ticket-modal-actions button {
+    flex: 1;
   }
 }
