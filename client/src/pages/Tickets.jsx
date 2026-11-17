@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from 'react';
 import {
   Search,
@@ -30,16 +31,9 @@ function Tickets() {
   const [resolution, setResolution] = useState('');
 
   const pendingLockRef = useRef(null);
-
   const agentName = 'Support Agent';
 
-  // Keep the pending lock reference in sync with React state.
-  const updatePendingLock = (ticketId) => {
-    pendingLockRef.current = ticketId;
-    setPendingLockTicket(ticketId);
-  };
-
-  // Register real-time events and join the shared ticket dashboard.
+  // Keep socket listeners active while the component is mounted.
   useEffect(() => {
     const handleConnect = () => {
       setConnected(true);
@@ -49,68 +43,62 @@ function Tickets() {
 
     const handleDisconnect = () => {
       setConnected(false);
-      updatePendingLock(null);
+      pendingLockRef.current = null;
+      setPendingLockTicket(null);
       setEditingTicket(null);
       setResolution('');
       setNotice('Connection Lost: Reconnecting...');
     };
 
     const handleDashboardState = (data = {}) => {
-      setTickets(Array.isArray(data.tickets) ? data.tickets : []);
+      setTickets(data.tickets || []);
       setLocks(data.locks || {});
     };
 
     const handleTicketCreated = (ticket) => {
-      if (!ticket?.id) return;
-
-      setTickets((previousTickets) => [
+      setTickets((currentTickets) => [
         ticket,
-        ...previousTickets.filter(
-          (item) => item.id !== ticket.id
-        ),
+        ...currentTickets.filter((item) => item.id !== ticket.id),
       ]);
     };
 
     const handleTicketsUpdated = (updatedTickets) => {
-      setTickets(
-        Array.isArray(updatedTickets) ? updatedTickets : []
-      );
+      setTickets(updatedTickets || []);
     };
 
     const handleLocksUpdated = (updatedLocks) => {
       const currentLocks = updatedLocks || {};
-
       setLocks(currentLocks);
 
-      const pendingTicketId = pendingLockRef.current;
+      const requestedTicket = pendingLockRef.current;
 
-      // Open the editor only after the server confirms ownership.
-      if (pendingTicketId) {
-        const confirmedLock = currentLocks[pendingTicketId];
+      // Open the editor only after the server confirms the lock.
+      if (requestedTicket) {
+        const confirmedLock = currentLocks[requestedTicket];
 
         if (confirmedLock?.socketId === socket.id) {
-          setEditingTicket(pendingTicketId);
+          setEditingTicket(requestedTicket);
           setResolution('');
-          updatePendingLock(null);
+          pendingLockRef.current = null;
+          setPendingLockTicket(null);
         }
       }
     };
 
     const handleLockRejected = ({ lockedBy, message } = {}) => {
-      updatePendingLock(null);
+      pendingLockRef.current = null;
+      setPendingLockTicket(null);
       setEditingTicket(null);
       setResolution('');
 
       setNotice(
         message ||
-          `This ticket is already locked by ${
-            lockedBy || 'another agent'
-          }.`
+          `This ticket is already locked by ${lockedBy || 'another agent'}.`
       );
     };
 
     const handleTicketError = ({ message } = {}) => {
-      setNotice(message || 'Unable to complete the ticket request.');
+      setNotice(message || 'Unable to create ticket.');
     };
 
     socket.on('connect', handleConnect);
@@ -128,7 +116,6 @@ function Tickets() {
       socket.emit('join_dashboard');
     }
 
-    // Remove only the listeners registered by this component.
     return () => {
       socket.off('connect', handleConnect);
       socket.off('disconnect', handleDisconnect);
@@ -141,18 +128,13 @@ function Tickets() {
     };
   }, []);
 
-  // Filter tickets using the search term and selected status.
   const filteredTickets = tickets.filter((ticket) => {
     const query = search.trim().toLowerCase();
 
-    const ticketId = String(ticket.id || '').toLowerCase();
-    const currentTruckId = String(ticket.truckId || '').toLowerCase();
-    const ticketIssue = String(ticket.issue || '').toLowerCase();
-
     const matchesSearch =
-      ticketId.includes(query) ||
-      currentTruckId.includes(query) ||
-      ticketIssue.includes(query);
+      String(ticket.id || '').toLowerCase().includes(query) ||
+      String(ticket.truckId || '').toLowerCase().includes(query) ||
+      String(ticket.issue || '').toLowerCase().includes(query);
 
     const matchesStatus =
       status === 'All' || ticket.status === status;
@@ -160,26 +142,24 @@ function Tickets() {
     return matchesSearch && matchesStatus;
   });
 
-  // Create a new ticket and share it with connected agents.
+  const openCount = tickets.filter(
+    (ticket) => ticket.status === 'Open'
+  ).length;
+
+  const resolvedCount = tickets.filter(
+    (ticket) => ticket.status === 'Resolved'
+  ).length;
+
   const createTicket = (event) => {
     event.preventDefault();
 
-    const trimmedTruckId = truckId.trim();
-    const trimmedIssue = issue.trim();
-
-    if (!trimmedTruckId || !trimmedIssue) {
-      setNotice('Please enter both Truck ID and issue details.');
-      return;
-    }
-
-    if (!connected) {
-      setNotice('Cannot create a ticket while the server is disconnected.');
+    if (!truckId.trim() || !issue.trim() || !connected) {
       return;
     }
 
     socket.emit('create_ticket', {
-      truckId: trimmedTruckId,
-      issue: trimmedIssue,
+      truckId: truckId.trim(),
+      issue: issue.trim(),
     });
 
     setTruckId('');
@@ -188,20 +168,15 @@ function Tickets() {
     setNotice('');
   };
 
-  // Ask the server to lock a ticket before opening its editor.
   const lockTicket = (ticketId) => {
-    if (!connected) {
-      setNotice('Please wait for the server connection.');
-      return;
-    }
-
-    if (pendingLockRef.current) {
-      setNotice('Please wait for the current lock request to finish.');
+    if (!connected || pendingLockRef.current) {
+      setNotice('Please wait for the current server request.');
       return;
     }
 
     setNotice('');
-    updatePendingLock(ticketId);
+    pendingLockRef.current = ticketId;
+    setPendingLockTicket(ticketId);
 
     socket.emit('lock_ticket', {
       ticketId,
@@ -209,14 +184,8 @@ function Tickets() {
     });
   };
 
-  // Save the resolution and release the ticket lock.
   const saveResolution = () => {
-    if (!editingTicket || !resolution.trim()) {
-      return;
-    }
-
-    if (!connected) {
-      setNotice('Connection lost. Please reconnect before saving.');
+    if (!editingTicket || !resolution.trim() || !connected) {
       return;
     }
 
@@ -228,10 +197,8 @@ function Tickets() {
 
     setEditingTicket(null);
     setResolution('');
-    setNotice('');
   };
 
-  // Close the editor and release the lock without saving.
   const closeEditor = () => {
     if (!editingTicket || !connected) {
       return;
@@ -245,90 +212,76 @@ function Tickets() {
     setResolution('');
   };
 
-  // Calculate the current ticket summary.
-  const openCount = tickets.filter(
-    (ticket) => ticket.status === 'Open'
-  ).length;
-
-  const resolvedCount = tickets.filter(
-    (ticket) => ticket.status === 'Resolved'
-  ).length;
+  const closeCreateForm = () => {
+    setShowForm(false);
+    setTruckId('');
+    setIssue('');
+  };
 
   return (
-    <div className="tickets-page">
-      {/* Page heading and primary action */}
-      <div className="tickets-page-header">
-        <div>
+    <main className="tickets-page">
+      <header className="tickets-page-header">
+        <div className="page-heading">
           <h1>Live Ticket Board</h1>
-          <p>
-            Manage dispatch issues with real-time agent collaboration.
-          </p>
+          <p>Manage dispatch issues with real-time agent collaboration.</p>
         </div>
 
         <button
           className="create-ticket-btn"
           type="button"
-          onClick={() => {
-            setNotice('');
-            setShowForm(true);
-          }}
+          onClick={() => setShowForm(true)}
           disabled={!connected}
         >
           <Plus size={18} />
           Create Ticket
         </button>
-      </div>
+      </header>
 
-      {/* Live server connection status */}
       <div
         className={`tickets-connection-status ${
           connected ? 'connected' : 'disconnected'
         }`}
         role="status"
-        aria-live="polite"
       >
         {connected ? <Wifi size={17} /> : <WifiOff size={17} />}
-
-        {connected
-          ? 'Connected to live server'
-          : 'Connection Lost: Reconnecting...'}
+        <span>
+          {connected
+            ? 'Connected to live server'
+            : 'Connection Lost: Reconnecting...'}
+        </span>
       </div>
 
-      {/* Display server and action messages */}
       {notice && (
         <div className="ticket-notice" role="alert">
           <span>{notice}</span>
-
           <button
             type="button"
             onClick={() => setNotice('')}
             aria-label="Dismiss notification"
           >
-            <X size={16} />
+            <X size={17} />
           </button>
         </div>
       )}
 
-      {/* Ticket summary */}
-      <div className="tickets-summary">
-        <div className="ticket-summary-card">
+      <section className="tickets-summary" aria-label="Ticket summary">
+        <article className="ticket-summary-card">
           <Ticket size={20} />
           <span>Total Tickets</span>
           <strong>{tickets.length}</strong>
-        </div>
+        </article>
 
-        <div className="ticket-summary-card">
+        <article className="ticket-summary-card">
           <span>Open Tickets</span>
           <strong>{openCount}</strong>
-        </div>
+        </article>
 
-        <div className="ticket-summary-card">
+        <article className="ticket-summary-card">
           <span>Resolved Tickets</span>
           <strong>{resolvedCount}</strong>
-        </div>
-      </div>
+        </article>
+      </section>
 
-      {/* Main ticket management section */}
       <section className="tickets-management">
         <div className="tickets-management-header">
           <div>
@@ -336,25 +289,23 @@ function Tickets() {
             <p>Live ticket status and editing locks.</p>
           </div>
 
-          {/* Search and status filters */}
           <div className="tickets-controls">
-            <div className="tickets-search">
+            <label className="tickets-search">
               <Search size={17} />
-
               <input
                 type="search"
                 placeholder="Search tickets..."
-                aria-label="Search tickets"
                 value={search}
                 onChange={(event) => setSearch(event.target.value)}
+                aria-label="Search tickets"
               />
-            </div>
+            </label>
 
             <select
               className="tickets-filter"
-              aria-label="Filter tickets by status"
               value={status}
               onChange={(event) => setStatus(event.target.value)}
+              aria-label="Filter tickets by status"
             >
               <option value="All">All Status</option>
               <option value="Open">Open</option>
@@ -363,75 +314,67 @@ function Tickets() {
           </div>
         </div>
 
-        {/* Live ticket table */}
         <div className="tickets-table-wrapper">
           <table className="tickets-table">
             <thead>
               <tr>
-                <th scope="col">Ticket</th>
-                <th scope="col">Truck ID</th>
-                <th scope="col">Issue</th>
-                <th scope="col">Status</th>
-                <th scope="col">Resolution</th>
-                <th scope="col">Lock Status</th>
-                <th scope="col">Action</th>
+                <th>Ticket</th>
+                <th>Truck ID</th>
+                <th>Issue</th>
+                <th>Status</th>
+                <th>Resolution</th>
+                <th>Lock Status</th>
+                <th>Action</th>
               </tr>
             </thead>
 
             <tbody>
               {filteredTickets.map((ticket) => {
                 const lock = locks[ticket.id];
-
-                const lockedByOther =
-                  Boolean(lock) && lock.socketId !== socket.id;
-
                 const isEditing = editingTicket === ticket.id;
                 const isPending = pendingLockTicket === ticket.id;
-
-                const ticketStatus = String(
-                  ticket.status || 'Open'
-                );
+                const lockedByOther = lock && lock.socketId !== socket.id;
 
                 return (
                   <tr
                     key={ticket.id}
-                    className={
-                      lockedByOther ? 'ticket-locked-row' : ''
-                    }
+                    className={lockedByOther ? 'ticket-locked-row' : ''}
                   >
                     <td className="ticket-id">{ticket.id}</td>
-
                     <td>{ticket.truckId}</td>
-
-                    <td>{ticket.issue}</td>
+                    <td className="ticket-issue">{ticket.issue}</td>
 
                     <td>
                       <span
-                        className={`status-badge ${ticketStatus
+                        className={`status-badge ${String(
+                          ticket.status || ''
+                        )
                           .toLowerCase()
                           .replace(/\s+/g, '-')}`}
                       >
-                        {ticketStatus}
+                        {ticket.status}
                       </span>
                     </td>
 
-                    <td>{ticket.resolution || '—'}</td>
+                    <td className="ticket-resolution">
+                      {ticket.resolution || '—'}
+                    </td>
 
                     <td>
                       {lock ? (
-                        <span className="ticket-lock-status">
-                          <Lock size={14} />
-                          {' '}Locked by {lock.agentName}
+                        <span className="lock-indicator locked">
+                          <Lock size={15} />
+                          Locked by {lock.agentName}
                         </span>
                       ) : (
-                        <span className="ticket-lock-status">
-                          <Unlock size={14} />
-                          {' '}Available
+                        <span className="lock-indicator available">
+                          <Unlock size={15} />
+                          Available
                         </span>
                       )}
                     </td>
 
-                    <td>
+                    <td className="ticket-action-cell">
                       {isEditing ? (
                         <div className="ticket-edit-actions">
                           <textarea
@@ -440,11 +383,12 @@ function Tickets() {
                               setResolution(event.target.value)
                             }
                             placeholder="Enter resolution..."
-                            aria-label={`Resolution for ${ticket.id}`}
                             rows={2}
+                            aria-label="Ticket resolution"
                           />
 
                           <button
+                            className="save-ticket-btn"
                             type="button"
                             onClick={saveResolution}
                             disabled={!resolution.trim() || !connected}
@@ -454,6 +398,7 @@ function Tickets() {
                           </button>
 
                           <button
+                            className="close-editor-btn"
                             type="button"
                             onClick={closeEditor}
                             disabled={!connected}
@@ -464,8 +409,8 @@ function Tickets() {
                         </div>
                       ) : (
                         <button
-                          type="button"
                           className="ticket-action-btn"
+                          type="button"
                           disabled={
                             Boolean(lock) ||
                             !connected ||
@@ -473,13 +418,8 @@ function Tickets() {
                           }
                           onClick={() => lockTicket(ticket.id)}
                         >
-                          <Lock size={16} />
-
-                          {isPending
-                            ? 'Locking...'
-                            : lockedByOther
-                              ? 'Locked'
-                              : 'Edit'}
+                          <Lock size={15} />
+                          {isPending ? 'Locking...' : 'Edit'}
                         </button>
                       )}
                     </td>
@@ -487,10 +427,9 @@ function Tickets() {
                 );
               })}
 
-              {/* Empty state */}
               {filteredTickets.length === 0 && (
                 <tr>
-                  <td colSpan={7} className="empty-tickets">
+                  <td colSpan="7" className="empty-tickets">
                     {connected
                       ? 'No tickets found.'
                       : 'Waiting for server connection...'}
@@ -501,48 +440,46 @@ function Tickets() {
           </table>
         </div>
 
-        <div className="tickets-footer">
+        <footer className="tickets-footer">
           Showing {filteredTickets.length} of {tickets.length} tickets
-        </div>
+        </footer>
       </section>
 
-      {/* Create ticket modal */}
       {showForm && (
         <div
           className="ticket-modal-overlay"
-          onClick={() => setShowForm(false)}
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) {
+              closeCreateForm();
+            }
+          }}
         >
-          <div
+          <section
             className="ticket-modal"
             role="dialog"
             aria-modal="true"
             aria-labelledby="ticket-modal-title"
-            onClick={(event) => event.stopPropagation()}
           >
             <div className="ticket-modal-header">
               <div>
-                <h2 id="ticket-modal-title">
-                  Create Dispatch Ticket
-                </h2>
+                <h2 id="ticket-modal-title">Create Dispatch Ticket</h2>
                 <p>Add a new truck issue.</p>
               </div>
 
               <button
-                type="button"
                 className="ticket-modal-close"
-                onClick={() => setShowForm(false)}
+                type="button"
+                onClick={closeCreateForm}
                 aria-label="Close form"
               >
-                <X size={20} />
+                <X size={19} />
               </button>
             </div>
 
             <form onSubmit={createTicket}>
-              <label htmlFor="truck-id">
+              <label>
                 Truck ID
-
                 <input
-                  id="truck-id"
                   value={truckId}
                   onChange={(event) => setTruckId(event.target.value)}
                   placeholder="Example: TX-9982"
@@ -550,11 +487,9 @@ function Tickets() {
                 />
               </label>
 
-              <label htmlFor="ticket-issue">
+              <label>
                 Issue
-
                 <textarea
-                  id="ticket-issue"
                   value={issue}
                   onChange={(event) => setIssue(event.target.value)}
                   placeholder="Describe the dispatch issue..."
@@ -565,16 +500,16 @@ function Tickets() {
 
               <div className="ticket-modal-actions">
                 <button
-                  type="button"
                   className="ticket-cancel-btn"
-                  onClick={() => setShowForm(false)}
+                  type="button"
+                  onClick={closeCreateForm}
                 >
                   Cancel
                 </button>
 
                 <button
-                  type="submit"
                   className="create-ticket-btn"
+                  type="submit"
                   disabled={!connected}
                 >
                   <Plus size={17} />
@@ -582,10 +517,10 @@ function Tickets() {
                 </button>
               </div>
             </form>
-          </div>
+          </section>
         </div>
       )}
-    </div>
+    </main>
   );
 }
 
