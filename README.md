@@ -7,7 +7,7 @@ Built with React, Node.js, Express.js, and Socket.IO, the application keeps tick
 ## Live Demo
 
 - **Frontend:** https://live-ops-helpdesk-green.vercel.app
-- **Backend:** https://live-ops-helpdesk-xox6.onrender.com
+- **Backend:** https://live-ops-helpdesk-xox6.onrender.com/health
 - **GitHub:** https://github.com/btwitsnaushad/live-ops-helpdesk
 
 ## Features
