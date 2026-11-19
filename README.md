@@ -61,6 +61,7 @@ live-ops-helpdesk/
 │       └── ticketStore.js
 │
 └── README.md
+└── PROMPTS.md
 ```
 
 ## Real-Time Socket Events
